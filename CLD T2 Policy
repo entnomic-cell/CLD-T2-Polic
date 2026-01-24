@@ -81,6 +81,18 @@ function Write-Section {
             Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
             Write-ColoredLine "⚠ $($line -replace '^WARNING: ', '')" Yellow
         }
+        elseif ($line -match "^\s*→ SUSPICIOUS") {
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-ColoredLine "$line" Red
+        }
+        elseif ($line -match "^\s*→") {
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-ColoredLine "$line" DarkYellow
+        }
+        elseif ($line -match "^\s*(Key:|Matched:|Value:)") {
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-ColoredLine "$line" DarkRed
+        }
         else {
             Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
             Write-ColoredLine $line White
@@ -433,7 +445,13 @@ try {
     }
     if ($bamApps) {
         $bamOutput += "SUCCESS: Found $($bamApps.Count) BAM entries."
-        if ($isSuspiciousBAM) { $bamOutput += "FAILURE: Suspicious BAM activity detected." }
+        if ($isSuspiciousBAM) { 
+            $bamOutput += "WARNING: Suspicious BAM activity detected (review required)."
+            $suspiciousBamEntries = $bamApps | Where-Object { $_.Suspicious -eq "Yes" }
+            foreach ($entry in $suspiciousBamEntries) {
+                $bamOutput += "  → SUSPICIOUS: $($entry.AppPath)"
+            }
+        }
     } else {
         $bamOutput += "SUCCESS: No BAM entries found."
     }
@@ -460,7 +478,13 @@ try {
     }
     if ($prefetchApps) {
         $prefetchOutput += "SUCCESS: Found $($prefetchApps.Count) Prefetch entries."
-        if ($isSuspiciousPrefetch) { $prefetchOutput += "FAILURE: Suspicious Prefetch activity detected." }
+        if ($isSuspiciousPrefetch) { 
+            $prefetchOutput += "WARNING: Suspicious Prefetch activity detected (review required)."
+            $suspiciousPrefetchEntries = $prefetchApps | Where-Object { $_.Suspicious -eq "Yes" }
+            foreach ($entry in $suspiciousPrefetchEntries) {
+                $prefetchOutput += "  → SUSPICIOUS: $($entry.AppName) - $($entry.FullName)"
+            }
+        }
     } else {
         $prefetchOutput += "SUCCESS: No Prefetch entries found."
     }
@@ -714,40 +738,316 @@ Show-CustomLoadingBar
 $hardwareOutput = @()
 
 $peripherals = @(
-    @{Name="Razer"; Software="C:\Program Files\Razer\Synapse3\Razer Synapse.exe"},
-    @{Name="Corsair"; Software="C:\Program Files (x86)\Corsair\CORSAIR iCUE Software\iCUE.exe"},
-    @{Name="Logitech"; Software="C:\Program Files\Logitech\G HUB\lghub.exe"},
-    @{Name="SteelSeries"; Software="C:\Program Files\SteelSeries\SteelSeries Engine 3\SteelSeriesEngine3.exe"},
-    @{Name="HyperX"; Software="C:\Program Files\HyperX\NGenuity\Ngenuity.exe"},
-    @{Name="ASUS"; Software="C:\Program Files (x86)\ASUS\Armoury Crate\ArmouryCrate.exe"}
+    @{
+        Name="Razer"
+        Software=@(
+            "C:\Program Files\Razer\Synapse3\Razer Synapse.exe",
+            "C:\Program Files (x86)\Razer\Synapse3\Razer Synapse.exe",
+            "C:\Program Files\Razer\Razer Central\RazerCentral.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Razer",
+            "HKLM:\SOFTWARE\WOW6432Node\Razer",
+            "HKCU:\SOFTWARE\Razer",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Razer Synapse"
+        )
+        RegistryKeywords=@("Razer", "Synapse", "RazerCentral")
+    },
+    @{
+        Name="Corsair"
+        Software=@(
+            "C:\Program Files (x86)\Corsair\CORSAIR iCUE Software\iCUE.exe",
+            "C:\Program Files\Corsair\CORSAIR iCUE 5 Software\iCUE.exe",
+            "C:\Program Files\Corsair\CORSAIR iCUE Software\iCUE.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Corsair",
+            "HKLM:\SOFTWARE\WOW6432Node\Corsair",
+            "HKCU:\SOFTWARE\Corsair",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{*iCUE*}"
+        )
+        RegistryKeywords=@("Corsair", "iCUE", "CUE")
+    },
+    @{
+        Name="Logitech"
+        Software=@(
+            "C:\Program Files\Logitech\G HUB\lghub.exe",
+            "C:\Program Files\Logitech Gaming Software\LCore.exe",
+            "C:\Program Files\LGHUB\lghub.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Logitech",
+            "HKLM:\SOFTWARE\WOW6432Node\Logitech",
+            "HKCU:\SOFTWARE\Logitech",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{*Logitech*}"
+        )
+        RegistryKeywords=@("Logitech", "GHUB", "G HUB", "LGS")
+    },
+    @{
+        Name="SteelSeries"
+        Software=@(
+            "C:\Program Files\SteelSeries\SteelSeries Engine 3\SteelSeriesEngine3.exe",
+            "C:\Program Files\SteelSeries\GG\SteelSeriesGG.exe",
+            "C:\Program Files (x86)\SteelSeries\SteelSeries Engine 3\SteelSeriesEngine3.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\SteelSeries",
+            "HKLM:\SOFTWARE\WOW6432Node\SteelSeries",
+            "HKCU:\SOFTWARE\SteelSeries",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SteelSeries*"
+        )
+        RegistryKeywords=@("SteelSeries", "SSEngine", "GG")
+    },
+    @{
+        Name="HyperX"
+        Software=@(
+            "C:\Program Files\HyperX\NGenuity\Ngenuity.exe",
+            "C:\Program Files (x86)\HyperX\NGenuity\Ngenuity.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\HyperX",
+            "HKLM:\SOFTWARE\WOW6432Node\HyperX",
+            "HKCU:\SOFTWARE\HyperX",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*NGenuity*"
+        )
+        RegistryKeywords=@("HyperX", "NGenuity")
+    },
+    @{
+        Name="ASUS ROG"
+        Software=@(
+            "C:\Program Files (x86)\ASUS\Armoury Crate\ArmouryCrate.exe",
+            "C:\Program Files\ASUS\Armoury Crate\ArmouryCrate.exe",
+            "C:\Program Files\ASUS\ROG Live Service\ROGLiveService.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\ASUS",
+            "HKLM:\SOFTWARE\WOW6432Node\ASUS",
+            "HKCU:\SOFTWARE\ASUS",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*Armoury*"
+        )
+        RegistryKeywords=@("ASUS", "Armoury", "ArmouryCrate", "ROG")
+    },
+    @{
+        Name="Roccat"
+        Software=@(
+            "C:\Program Files (x86)\ROCCAT\Swarm\ROCCAT_Swarm_Monitor.exe",
+            "C:\Program Files\ROCCAT\Swarm\ROCCAT_Swarm_Monitor.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\ROCCAT",
+            "HKLM:\SOFTWARE\WOW6432Node\ROCCAT",
+            "HKCU:\SOFTWARE\ROCCAT"
+        )
+        RegistryKeywords=@("ROCCAT", "Swarm")
+    },
+    @{
+        Name="Glorious"
+        Software=@(
+            "C:\Program Files\Glorious\Glorious Core\GloriousCore.exe",
+            "C:\Program Files (x86)\Glorious\Glorious Core\GloriousCore.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Glorious",
+            "HKLM:\SOFTWARE\WOW6432Node\Glorious",
+            "HKCU:\SOFTWARE\Glorious"
+        )
+        RegistryKeywords=@("Glorious", "GloriousCore", "Model O", "Model D")
+    },
+    @{
+        Name="Wooting"
+        Software=@(
+            "C:\Program Files\Wooting\Wootility\Wootility.exe",
+            "C:\Program Files (x86)\Wooting\Wootility\Wootility.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Wooting",
+            "HKCU:\SOFTWARE\Wooting"
+        )
+        RegistryKeywords=@("Wooting", "Wootility")
+    },
+    @{
+        Name="Finalmouse"
+        Software=@(
+            "C:\Program Files\Finalmouse\Finalmouse.exe",
+            "C:\Program Files (x86)\Finalmouse\Finalmouse.exe"
+        )
+        RegistryPaths=@(
+            "HKLM:\SOFTWARE\Finalmouse",
+            "HKCU:\SOFTWARE\Finalmouse"
+        )
+        RegistryKeywords=@("Finalmouse", "Ultralight")
+    }
 )
 
+Write-Host ""
+Write-ColoredLine "  ┌─ Peripheral Detection Results" DarkGray
+
 try {
-    $usbDevices = Get-PnpDevice -Class "Keyboard","Mouse" | Where-Object { $_.Status -eq "OK" }
+    $usbDevices = Get-PnpDevice -Class "Keyboard","Mouse","HIDClass" -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "OK" }
     $foundPeripherals = $false
+    $detectedPeripheralsList = @()
 
     foreach ($periph in $peripherals) {
         $deviceDetected = $usbDevices | Where-Object { $_.FriendlyName -like "*$($periph.Name)*" }
-        $softwareExists = Test-Path $periph.Software
-
-        if ($deviceDetected -and $softwareExists) {
-            Write-ColoredLine "  ✓ Detected $($periph.Name) device and software." Green
-            Write-ColoredLine "    Launching $($periph.Name) software for macro inspection..." Cyan
-            Start-Process $periph.Software -ErrorAction SilentlyContinue
+        
+        # Check software paths
+        $softwarePath = $null
+        foreach ($sw in $periph.Software) {
+            if (Test-Path $sw) {
+                $softwarePath = $sw
+                break
+            }
+        }
+        
+        # Check registry paths
+        $registryDetected = $false
+        $registryDetails = @()
+        foreach ($regPath in $periph.RegistryPaths) {
+            try {
+                # Handle wildcard paths
+                if ($regPath -like "*`**") {
+                    $basePath = Split-Path $regPath -Parent
+                    $pattern = Split-Path $regPath -Leaf
+                    if (Test-Path $basePath) {
+                        $matchingKeys = Get-ChildItem $basePath -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $pattern }
+                        if ($matchingKeys) {
+                            $registryDetected = $true
+                            foreach ($key in $matchingKeys) {
+                                $registryDetails += "Registry: $($key.PSPath)"
+                            }
+                        }
+                    }
+                } else {
+                    if (Test-Path $regPath) {
+                        $registryDetected = $true
+                        $regProps = Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue
+                        if ($regProps) {
+                            $registryDetails += "Registry: $regPath"
+                            # Check for specific values
+                            foreach ($prop in $regProps.PSObject.Properties) {
+                                if ($prop.Name -notlike "PS*") {
+                                    foreach ($keyword in $periph.RegistryKeywords) {
+                                        if ($prop.Value -imatch [regex]::Escape($keyword)) {
+                                            $registryDetails += "  → Key: $($prop.Name) = $($prop.Value)"
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch {}
+        }
+        
+        # Additional registry scan in common locations
+        $commonRegPaths = @(
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+        )
+        foreach ($commonPath in $commonRegPaths) {
+            try {
+                if (Test-Path $commonPath) {
+                    $uninstallKeys = Get-ChildItem $commonPath -ErrorAction SilentlyContinue
+                    foreach ($key in $uninstallKeys) {
+                        try {
+                            $displayName = (Get-ItemProperty -Path $key.PSPath -ErrorAction SilentlyContinue).DisplayName
+                            if ($displayName) {
+                                foreach ($keyword in $periph.RegistryKeywords) {
+                                    if ($displayName -imatch [regex]::Escape($keyword)) {
+                                        $registryDetected = $true
+                                        $registryDetails += "Installed: $displayName"
+                                        break
+                                    }
+                                }
+                            }
+                        } catch {}
+                    }
+                }
+            } catch {}
+        }
+        
+        # Determine detection status and output
+        $isDetected = $deviceDetected -or $softwarePath -or $registryDetected
+        
+        if ($isDetected) {
             $foundPeripherals = $true
-        } elseif ($deviceDetected) {
-            Write-ColoredLine "  ✓ Detected $($periph.Name) device (no software found)." Yellow
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-Host "█████████████████████████████████████████████████████████" -ForegroundColor Cyan
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-Host "  ✓ $($periph.Name) PERIPHERAL DETECTED" -ForegroundColor Green
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-Host "█████████████████████████████████████████████████████████" -ForegroundColor Cyan
+            
+            $detectionMethods = @()
+            
+            if ($deviceDetected) {
+                $detectionMethods += "USB Device"
+                foreach ($dev in $deviceDetected) {
+                    Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+                    Write-Host "    → Device: $($dev.FriendlyName)" -ForegroundColor White
+                }
+            }
+            
+            if ($registryDetected) {
+                $detectionMethods += "Registry"
+                foreach ($regDetail in $registryDetails | Select-Object -First 5) {
+                    Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+                    Write-Host "    → $regDetail" -ForegroundColor White
+                }
+            }
+            
+            if ($softwarePath) {
+                $detectionMethods += "Software"
+                Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+                Write-Host "    → Software: $softwarePath" -ForegroundColor White
+            }
+            
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-Host "    Detection Methods: $($detectionMethods -join ', ')" -ForegroundColor Cyan
+            
+            $detectedPeripheralsList += @{
+                Name = $periph.Name
+                SoftwarePath = $softwarePath
+                DeviceDetected = [bool]$deviceDetected
+                RegistryDetected = $registryDetected
+            }
+            
+            # Auto-launch software if found
+            if ($softwarePath) {
+                Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+                Write-Host "    → AUTO-LAUNCHING $($periph.Name) software for macro inspection..." -ForegroundColor Yellow
+                try {
+                    Start-Process $softwarePath -ErrorAction Stop
+                    $hardwareOutput += "SUCCESS: $($periph.Name) DETECTED - Software launched for inspection."
+                } catch {
+                    Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+                    Write-Host "    → Failed to launch software: $_" -ForegroundColor Red
+                    $hardwareOutput += "SUCCESS: $($periph.Name) DETECTED - Software found but failed to launch."
+                }
+            } else {
+                $hardwareOutput += "SUCCESS: $($periph.Name) DETECTED - No software installed (device/registry only)."
+            }
+            
+            Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+            Write-Host "" -ForegroundColor White
         }
     }
 
     if (-not $foundPeripherals) {
+        Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+        Write-Host "  No gaming peripherals detected via USB, registry, or software." -ForegroundColor Yellow
         $hardwareOutput += "SUCCESS: No gaming peripheral software detected."
     } else {
-        $hardwareOutput += "SUCCESS: Peripheral software inspection initiated."
+        Write-Host "  │ " -NoNewline -ForegroundColor DarkGray
+        Write-Host "  Total peripherals detected: $($detectedPeripheralsList.Count)" -ForegroundColor Cyan
     }
 } catch {
-    $hardwareOutput += "WARNING: Peripheral detection failed."
+    $hardwareOutput += "WARNING: Peripheral detection failed: $_"
 }
+
+Write-ColoredLine "  └─" DarkGray
 
 Write-Section "Gaming Peripheral Check" $hardwareOutput
 
@@ -782,6 +1082,7 @@ $registryPaths = @(
 )
 
 $foundSuspiciousRegistry = $false
+$suspiciousRegistryEntries = @()
 foreach ($regPath in $registryPaths) {
     try {
         if (Test-Path $regPath) {
@@ -791,10 +1092,12 @@ foreach ($regPath in $registryPaths) {
                     $value = $prop.Value
                     foreach ($susp in $suspiciousCombined) {
                         if (($prop.Name -imatch [regex]::Escape($susp)) -or ($value -imatch [regex]::Escape($susp))) {
-                            $step7Output += "FAILURE: Suspicious registry entry detected."
-                            $step7Output += "  → Path: $regPath"
-                            $step7Output += "  → Key: $($prop.Name)"
-                            $step7Output += "  → Value: $value"
+                            $suspiciousRegistryEntries += @{
+                                Path = $regPath
+                                Key = $prop.Name
+                                Value = $value
+                                Match = $susp
+                            }
                             $foundSuspiciousRegistry = $true
                         }
                     }
@@ -806,7 +1109,15 @@ foreach ($regPath in $registryPaths) {
     }
 }
 
-if (-not $foundSuspiciousRegistry -and ($step7Output | Where-Object { $_ -notmatch '^WARNING' }).Count -eq 0) {
+if ($foundSuspiciousRegistry) {
+    $step7Output += "SUCCESS: Registry scan completed."
+    $step7Output += "WARNING: Suspicious registry entries found (review required - $($suspiciousRegistryEntries.Count) entries)."
+    foreach ($entry in $suspiciousRegistryEntries) {
+        $step7Output += "  → SUSPICIOUS: $($entry.Path)"
+        $step7Output += "    Key: $($entry.Key)"
+        $step7Output += "    Matched: $($entry.Match)"
+    }
+} elseif (($step7Output | Where-Object { $_ -notmatch '^WARNING' }).Count -eq 0) {
     $step7Output += "SUCCESS: No suspicious registry entries detected."
 }
 
@@ -876,21 +1187,30 @@ try {
     $muiPath = "HKCU:\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"
     $entries = Get-ItemProperty -Path $muiPath -ErrorAction Stop
     $foundSuspicious = $false
+    $suspiciousMuiEntries = @()
     foreach ($prop in $entries.PSObject.Properties) {
         foreach ($susp in $suspiciousCombined) {
             if ($prop.Name.ToLower() -like "*$susp*") {
-                $step8Output += "WARNING: Suspicious registry entry found."
+                $suspiciousMuiEntries += @{
+                    Key = $prop.Name
+                    Match = $susp
+                }
                 $foundSuspicious = $true
-                break
             }
         }
-        if ($foundSuspicious) { break }
     }
-    if (-not $foundSuspicious) {
-        $step8Output += "SUCCESS: No suspicious registry entries."
+    $step8Output += "SUCCESS: MuiCache scan completed."
+    if ($foundSuspicious) {
+        $step8Output += "WARNING: Suspicious MuiCache entries found (review required - $($suspiciousMuiEntries.Count) entries)."
+        foreach ($entry in $suspiciousMuiEntries | Select-Object -First 5) {
+            $step8Output += "  → SUSPICIOUS: $($entry.Key) (matched: $($entry.Match))"
+        }
+        if ($suspiciousMuiEntries.Count -gt 5) {
+            $step8Output += "  → ... and $($suspiciousMuiEntries.Count - 5) more entries"
+        }
     }
 } catch {
-    $step8Output += "WARNING: Registry scan failed."
+    $step8Output += "WARNING: MuiCache registry scan failed."
 }
 
 Start-Job {
