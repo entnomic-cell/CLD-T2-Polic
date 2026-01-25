@@ -338,8 +338,7 @@ Show-CustomLoadingBar
 $bamOutput = @()
 $prefetchOutput = @()
 
-$suspiciousFiles = @("matcha", "olduimatrix", "autoexecute", "workspace", "monkeyaim", "thunderaim", "thunderclient", "celex", "release", "matrix", "matcha.exe", "triggerbot", "solara", "xeno", "wave", "cloudy", "tupical", "horizon", "myst", "celery", "zarora", "juju", "nezure", "FusionHacks.zip", "release.zip", "bootstrapper", "aimmy.exe", "aimmy", "Fluxus", "clumsy", "build", "build.zip", "build.rar", "MystW.exe", "isabelle", "dx9", "dx9ware")
-$suspiciousList = @("isabelle", "xeno", "solara", "bootstrapper", "bootstrappernew", "loader", "santoware", "mystw", "severe", "mapper", "thunderclient", "monkeyaim", "olduimatrix", "matrix", "matcha")
+$suspiciousFiles = @("ronin","olduimatrix","chocospoloit","valex","workspace","monkeyaim","thunderaim","thunderclient","velocity","release","matrix","matcha.exe","triggerbot","solara","xeno","wave","volcano","tupical","horizon","myst","celery","cryptic","juju","nezure","FusionHacks.zip","release.zip","bootstrapper","aimmy.exe","aimmy","Fluxus","clumsy","updater","build.zip","build.rar","MystW.exe","isabelle","dx9","dx9ware","bootstrappernew","loader","santoware","mystw","severe","mapper")
 $watchlist = @("BOOTSTRAPPERNEW.EXE", "BOOTSTRAPPER.EXE", "XENO.EXE", "XENOUI.EXE", "SOLARA.EXE", "MAPPER.EXE", "LOADER.EXE", "MATCHA.EXE", "EVOLVE.EXE")
 $allSuspicious = $suspiciousFiles + $suspiciousList + $watchlist
 
@@ -1188,11 +1187,7 @@ Show-CustomLoadingBar
 
 $step8Output = @()
 $suspiciousCombined = @(
-    "matcha","olduimatrix","autoexe","valex","workspace","monkeyaim","thunderaim","thunderclient",
-    "celex","release","matrix","matcha.exe","triggerbot","solara","xeno","wave","cloudy",
-    "tupical","horizon","myst","celery","zarora","juju","nezure","FusionHacks.zip","release.zip",
-    "bootstrapper","aimmy.exe","aimmy","Fluxus","clumsy","updater","build.zip","build.rar","MystW.exe",
-    "isabelle","dx9","dx9ware","bootstrappernew","loader","santoware","mystw","severe","mapper",
+    "ronin","olduimatrix","chocospoloit","valex","workspace","monkeyaim","thunderaim","thunderclient","velocity","release","matrix","matcha.exe","triggerbot","solara","xeno","wave","volcano","tupical","horizon","myst","celery","cryptic","juju","nezure","FusionHacks.zip","release.zip","bootstrapper","aimmy.exe","aimmy","Fluxus","clumsy","updater","build.zip","build.rar","MystW.exe","isabelle","dx9","dx9ware","bootstrappernew","loader","santoware","mystw","severe","mapper",
     "BOOTSTRAPPERNEW.EXE","BOOTSTRAPPER.EXE","XENO.EXE","XENOUI.EXE","SOLARA.EXE","MAPPER.EXE",
     "LOADER.EXE","MATCHA.EXE","EVOLVE.EXE"
 )
